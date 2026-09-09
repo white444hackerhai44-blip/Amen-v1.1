@@ -1,0 +1,890 @@
+--// Fling Gui V25.0 - Touch Fling Auto-Boost
+--// Mobile Delta Optimized
+--// by prespeshnikShashlika
+
+-- ===== ANTI-BAN =====
+local function antiBan()
+    pcall(function()
+        if game.Players.LocalPlayer then
+            game.Players.LocalPlayer.Kick = function() end
+        end
+        if game:GetService("TeleportService") then
+            game:GetService("TeleportService").Teleport = function() end
+        end
+    end)
+end
+antiBan()
+
+workspace.FallenPartsDestroyHeight = 0/0
+
+-- ===== SERVICES =====
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
+local StarterGui = game:GetService("StarterGui")
+local TweenService = game:GetService("TweenService")
+local Debris = game:GetService("Debris")
+local localPlayer = Players.LocalPlayer
+
+-- ===== CREATE GUI =====
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "FlingGUI"
+screenGui.ResetOnSpawn = false
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+local success = false
+for _, parent in ipairs({
+    localPlayer:WaitForChild("PlayerGui"),
+    game:GetService("CoreGui"),
+    localPlayer.PlayerGui,
+    game:GetService("StarterGui")
+}) do
+    pcall(function()
+        screenGui.Parent = parent
+        success = true
+    end)
+    if success then break end
+end
+
+screenGui.Enabled = true
+screenGui.DisplayOrder = 999
+
+-- ===== MAIN FRAME =====
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 350, 0, 550)
+frame.Position = UDim2.new(0.5, -175, 0.5, -275)
+frame.BackgroundColor3 = Color3.fromRGB(10, 10, 20)
+frame.BackgroundTransparency = 0.05
+frame.Parent = screenGui
+frame.Active = true
+frame.Draggable = true
+frame.ClipsDescendants = false
+frame.ZIndex = 999
+
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 20)
+UICorner.Parent = frame
+
+-- Glow Border
+local glowFrame = Instance.new("Frame")
+glowFrame.Size = UDim2.new(1.06, 0, 1.06, 0)
+glowFrame.Position = UDim2.new(-0.03, 0, -0.03, 0)
+glowFrame.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+glowFrame.BackgroundTransparency = 0.85
+glowFrame.BorderSizePixel = 0
+glowFrame.ZIndex = 998
+glowFrame.Parent = frame
+local glowCorner = Instance.new("UICorner")
+glowCorner.CornerRadius = UDim.new(0, 22)
+glowCorner.Parent = glowFrame
+
+local glowStroke = Instance.new("UIStroke")
+glowStroke.Thickness = 3
+glowStroke.Color = Color3.fromRGB(255, 0, 0)
+glowStroke.Transparency = 0.5
+glowStroke.Parent = glowFrame
+
+spawn(function()
+    while wait(0.03) do
+        local hue = tick() * 0.04 % 1
+        local color = Color3.fromHSV(hue, 1, 0.8)
+        glowStroke.Color = color
+        glowFrame.BackgroundColor3 = color
+    end
+end)
+
+-- ===== TITLE BAR =====
+local titleBar = Instance.new("Frame")
+titleBar.Size = UDim2.new(1, 0, 0, 50)
+titleBar.Position = UDim2.new(0, 0, 0, 0)
+titleBar.BackgroundColor3 = Color3.fromRGB(20, 20, 35)
+titleBar.BackgroundTransparency = 0.3
+titleBar.Parent = frame
+local titleCorner = Instance.new("UICorner")
+titleCorner.CornerRadius = UDim.new(0, 20)
+titleCorner.Parent = titleBar
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, -100, 1, 0)
+title.Position = UDim2.new(0, 50, 0, 0)
+title.BackgroundTransparency = 1
+title.Text = "⚡ FLING ⚡"
+title.TextColor3 = Color3.new(1, 1, 1)
+title.Font = Enum.Font.GothamBold
+title.TextSize = 24
+title.Parent = titleBar
+
+local toggleMinimizeBtn = Instance.new("TextButton")
+toggleMinimizeBtn.Size = UDim2.new(0, 40, 0, 35)
+toggleMinimizeBtn.Position = UDim2.new(1, -45, 0, 7)
+toggleMinimizeBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+toggleMinimizeBtn.Text = "−"
+toggleMinimizeBtn.TextColor3 = Color3.new(1, 1, 1)
+toggleMinimizeBtn.TextSize = 24
+toggleMinimizeBtn.ZIndex = 999
+toggleMinimizeBtn.Parent = titleBar
+local minCorner = Instance.new("UICorner")
+minCorner.CornerRadius = UDim.new(0, 8)
+minCorner.Parent = toggleMinimizeBtn
+
+local togglePhaseBtn = Instance.new("TextButton")
+togglePhaseBtn.Size = UDim2.new(0, 40, 0, 35)
+togglePhaseBtn.Position = UDim2.new(0, 5, 0, 7)
+togglePhaseBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+togglePhaseBtn.Text = "1"
+togglePhaseBtn.TextColor3 = Color3.new(1, 1, 1)
+togglePhaseBtn.TextSize = 18
+togglePhaseBtn.ZIndex = 999
+togglePhaseBtn.Parent = titleBar
+local phaseCorner = Instance.new("UICorner")
+phaseCorner.CornerRadius = UDim.new(0, 8)
+phaseCorner.Parent = togglePhaseBtn
+
+-- ===== SCROLLING FRAME =====
+local scrollFrame = Instance.new("ScrollingFrame")
+scrollFrame.Size = UDim2.new(1, -10, 1, -60)
+scrollFrame.Position = UDim2.new(0, 5, 0, 55)
+scrollFrame.BackgroundTransparency = 1
+scrollFrame.Parent = frame
+scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 650)
+scrollFrame.ScrollBarThickness = 4
+scrollFrame.ScrollBarImageColor3 = Color3.fromRGB(255, 0, 0)
+scrollFrame.ClipsDescendants = true
+scrollFrame.ZIndex = 999
+
+-- ===== INPUT BOX =====
+local inputBox = Instance.new("TextBox")
+inputBox.Size = UDim2.new(0.94, 0, 0, 45)
+inputBox.Position = UDim2.new(0.03, 0, 0, 5)
+inputBox.BackgroundColor3 = Color3.fromRGB(30, 30, 45)
+inputBox.Text = ""
+inputBox.PlaceholderText = "nickname, all, nonfriends"
+inputBox.TextColor3 = Color3.new(1, 1, 1)
+inputBox.ClearTextOnFocus = false
+inputBox.Parent = scrollFrame
+inputBox.TextSize = 18
+inputBox.Font = Enum.Font.Code
+inputBox.ZIndex = 999
+local inputCorner = Instance.new("UICorner")
+inputCorner.CornerRadius = UDim.new(0, 10)
+inputCorner.Parent = inputBox
+
+-- ===== BUTTONS =====
+local function createButton(text, y, tag)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0.94, 0, 0, 45)
+    btn.Position = UDim2.new(0.03, 0, 0, y)
+    btn.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
+    btn.Text = text
+    btn.TextColor3 = Color3.new(1, 1, 1)
+    btn.Parent = scrollFrame
+    btn.Font = Enum.Font.Sarpanch
+    btn.TextSize = 18
+    btn.ZIndex = 999
+    btn.AutoButtonColor = true
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 10)
+    corner.Parent = btn
+    return btn
+end
+
+-- Mode Container
+local modeContainer = Instance.new("Frame")
+modeContainer.Size = UDim2.new(0.94, 0, 0, 45)
+modeContainer.Position = UDim2.new(0.03, 0, 0, 55)
+modeContainer.BackgroundTransparency = 1
+modeContainer.Parent = scrollFrame
+modeContainer.ZIndex = 999
+
+local modeBtn = Instance.new("TextButton")
+modeBtn.Size = UDim2.new(0.25, 0, 1, 0)
+modeBtn.Position = UDim2.new(0, 0, 0, 0)
+modeBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+modeBtn.Text = "1"
+modeBtn.TextColor3 = Color3.new(1, 1, 1)
+modeBtn.TextSize = 20
+modeBtn.Parent = modeContainer
+modeBtn.ZIndex = 999
+local modeCorner = Instance.new("UICorner")
+modeCorner.CornerRadius = UDim.new(0, 10)
+modeCorner.Parent = modeBtn
+
+local mainBtn = Instance.new("TextButton")
+mainBtn.Size = UDim2.new(0.73, 0, 1, 0)
+mainBtn.Position = UDim2.new(0.27, 0, 0, 0)
+mainBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+mainBtn.Text = "FLING: OFF"
+mainBtn.TextColor3 = Color3.new(1, 1, 1)
+mainBtn.Parent = modeContainer
+mainBtn.Font = Enum.Font.Sarpanch
+mainBtn.TextSize = 20
+mainBtn.ZIndex = 999
+local mainCorner = Instance.new("UICorner")
+mainCorner.CornerRadius = UDim.new(0, 10)
+mainCorner.Parent = mainBtn
+
+-- Create all buttons
+local buttons = {}
+local btnData = {
+    {"🚀 TOUCH FLING: OFF", 105, "touchFling"},
+    {"ANTI FLING: OFF", 155, "antiFling"},
+    {"ANTI KILL: OFF", 205, "antiKill"},
+    {"NOCLIP: OFF", 255, "noclip"},
+    {"REVENGE: OFF", 305, "revenge"},
+    {"LAG SWITCH: OFF", 355, "lagSwitch"}
+}
+
+for _, data in ipairs(btnData) do
+    buttons[data[3]] = createButton(data[1], data[2], data[3])
+end
+
+-- Status
+local statusLabel = Instance.new("TextLabel")
+statusLabel.Size = UDim2.new(0.94, 0, 0, 35)
+statusLabel.Position = UDim2.new(0.03, 0, 0, 410)
+statusLabel.BackgroundTransparency = 1
+statusLabel.Text = "✅ READY"
+statusLabel.TextColor3 = Color3.new(0, 1, 0)
+statusLabel.Font = Enum.Font.Gotham
+statusLabel.TextSize = 16
+statusLabel.Parent = scrollFrame
+statusLabel.ZIndex = 999
+
+-- Speed with Auto-Boost Display
+local speedLabel = Instance.new("TextLabel")
+speedLabel.Size = UDim2.new(0.94, 0, 0, 35)
+speedLabel.Position = UDim2.new(0.03, 0, 0, 445)
+speedLabel.BackgroundTransparency = 1
+speedLabel.Text = "SPEED: 0 🚀"
+speedLabel.TextColor3 = Color3.new(1, 1, 1)
+speedLabel.Font = Enum.Font.Gotham
+speedLabel.TextSize = 16
+speedLabel.Parent = scrollFrame
+speedLabel.ZIndex = 999
+
+-- Boost Level Display
+local boostLabel = Instance.new("TextLabel")
+boostLabel.Size = UDim2.new(0.94, 0, 0, 35)
+boostLabel.Position = UDim2.new(0.03, 0, 0, 480)
+boostLabel.BackgroundTransparency = 1
+boostLabel.Text = "BOOST: x1 🔥"
+boostLabel.TextColor3 = Color3.new(1, 0.5, 0)
+boostLabel.Font = Enum.Font.Gotham
+boostLabel.TextSize = 16
+boostLabel.Parent = scrollFrame
+boostLabel.ZIndex = 999
+
+-- ===== PHASE BUTTONS =====
+local phaseButtons = {}
+local phase2Data = {
+    {"STRENGTH: OFF", 5, "strength"},
+    {"SPAWNPOINT: OFF", 55, "spawnpoint"},
+    {"ANTI SLAP: OFF", 105, "antiSlap"},
+    {"XENO AFLING: OFF", 155, "xenoAntiFling"},
+    {"INFINITE POS: OFF", 205, "infinitePos"},
+    {"ANTI FALL: OFF", 255, "antiFall"}
+}
+
+local phase3Data = {
+    {"ANTI SIT: OFF", 5, "antiSit"},
+    {"ANTI CONVEYOR: OFF", 55, "antiConveyor"},
+    {"FREECAM: OFF", 105, "freeCam"},
+    {"INVIS: OFF", 155, "invis"},
+    {"ANTI RAGDOLL: OFF", 205, "antiRagdoll"},
+    {"PUNCH FLING", 255, "punchFling"}
+}
+
+for _, data in ipairs(phase2Data) do
+    local btn = createButton(data[1], data[2], data[3])
+    btn.Visible = false
+    phaseButtons[data[3]] = btn
+end
+
+for _, data in ipairs(phase3Data) do
+    local btn = createButton(data[1], data[2], data[3])
+    btn.Visible = false
+    phaseButtons[data[3]] = btn
+end
+
+local function updateCanvas()
+    local height = 520
+    if isPhase2 then height = 320 end
+    if isPhase3 then height = 320 end
+    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, height)
+end
+
+-- ===== PHASE TOGGLE =====
+local isPhase2 = false
+local isPhase3 = false
+
+local function togglePhase()
+    if not isPhase2 and not isPhase3 then
+        isPhase2 = true
+        togglePhaseBtn.Text = "2"
+        for _, btn in pairs({inputBox, modeContainer, buttons.touchFling, buttons.antiFling, buttons.antiKill, buttons.noclip, buttons.revenge, buttons.lagSwitch, statusLabel, speedLabel, boostLabel}) do
+            if btn then btn.Visible = false end
+        end
+        for k, btn in pairs(phaseButtons) do
+            if btn then
+                btn.Visible = (k == "strength" or k == "spawnpoint" or k == "antiSlap" or k == "xenoAntiFling" or k == "infinitePos" or k == "antiFall")
+            end
+        end
+        updateCanvas()
+    elseif isPhase2 then
+        isPhase2 = false
+        isPhase3 = true
+        togglePhaseBtn.Text = "3"
+        for k, btn in pairs(phaseButtons) do
+            if btn then
+                if k == "strength" or k == "spawnpoint" or k == "antiSlap" or k == "xenoAntiFling" or k == "infinitePos" or k == "antiFall" then
+                    btn.Visible = false
+                elseif k == "antiSit" or k == "antiConveyor" or k == "freeCam" or k == "invis" or k == "antiRagdoll" or k == "punchFling" then
+                    btn.Visible = true
+                end
+            end
+        end
+        updateCanvas()
+    else
+        isPhase3 = false
+        togglePhaseBtn.Text = "1"
+        for _, btn in pairs({inputBox, modeContainer, buttons.touchFling, buttons.antiFling, buttons.antiKill, buttons.noclip, buttons.revenge, buttons.lagSwitch, statusLabel, speedLabel, boostLabel}) do
+            if btn then btn.Visible = true end
+        end
+        for k, btn in pairs(phaseButtons) do
+            if btn then
+                if k == "antiSit" or k == "antiConveyor" or k == "freeCam" or k == "invis" or k == "antiRagdoll" or k == "punchFling" then
+                    btn.Visible = false
+                end
+            end
+        end
+        updateCanvas()
+    end
+end
+
+togglePhaseBtn.MouseButton1Click:Connect(togglePhase)
+
+-- ===== MINIMIZE =====
+local isMinimized = false
+local originalSize = frame.Size
+
+local function toggleMinimize()
+    isMinimized = not isMinimized
+    
+    if isMinimized then
+        frame.Size = UDim2.new(0, 80, 0, 80)
+        title.Text = "⚡"
+        title.TextSize = 34
+        scrollFrame.Visible = false
+        toggleMinimizeBtn.Visible = false
+        togglePhaseBtn.Visible = false
+        frame.Position = UDim2.new(0.5, -40, 0.85, 0)
+    else
+        frame.Size = originalSize
+        title.Text = "⚡ FLING ⚡"
+        title.TextSize = 24
+        scrollFrame.Visible = true
+        toggleMinimizeBtn.Visible = true
+        togglePhaseBtn.Visible = true
+        frame.Position = UDim2.new(0.5, -175, 0.5, -275)
+    end
+end
+
+toggleMinimizeBtn.MouseButton1Click:Connect(toggleMinimize)
+
+-- ===== CORE FUNCTIONS =====
+local flingActive = false
+local currentInput = ""
+local flingMode = 1
+
+-- ===== TOUCH FLING AUTO-BOOST SYSTEM =====
+local touchFlingActive = false
+local touchFlingSpeed = 0
+local touchFlingBoost = 1
+local touchFlingMaxBoost = 999999
+local touchFlingConnection = nil
+local touchFlingLoop = nil
+
+-- Auto-Boost Touch Fling - UNLIMITED SPEED
+local function startTouchFling()
+    touchFlingActive = true
+    touchFlingSpeed = 1000
+    touchFlingBoost = 1
+    
+    buttons.touchFling.Text = "🚀 TOUCH FLING: ON 🔥"
+    buttons.touchFling.BackgroundColor3 = Color3.fromRGB(80, 20, 20)
+    statusLabel.Text = "⚡ TOUCH FLING ACTIVE - BOOSTING..."
+    speedLabel.TextColor3 = Color3.fromRGB(255, 200, 0)
+    
+    -- Main boost loop - NEVER STOPS
+    touchFlingLoop = RunService.Heartbeat:Connect(function()
+        if not touchFlingActive then return end
+        
+        local char = localPlayer.Character
+        if not char then return end
+        
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
+        
+        -- AUTO-BOOST: Increase speed every frame
+        touchFlingBoost = touchFlingBoost * 1.05  -- 5% increase per frame
+        if touchFlingBoost > touchFlingMaxBoost then
+            touchFlingBoost = touchFlingMaxBoost
+        end
+        
+        -- Calculate current speed (exponential growth)
+        local currentSpeed = touchFlingSpeed * touchFlingBoost
+        if currentSpeed > 9e99 then currentSpeed = 9e99 end
+        
+        -- Apply velocity with increasing power
+        hrp.AssemblyLinearVelocity = Vector3.new(currentSpeed, currentSpeed * 100, currentSpeed)
+        hrp.AssemblyAngularVelocity = Vector3.new(currentSpeed * 10, currentSpeed * 10, currentSpeed * 10)
+        
+        -- Also apply to all parts in character for maximum effect
+        for _, part in pairs(char:GetDescendants()) do
+            if part:IsA("BasePart") and part ~= hrp then
+                part.AssemblyLinearVelocity = Vector3.new(currentSpeed, currentSpeed * 100, currentSpeed)
+                part.AssemblyAngularVelocity = Vector3.new(currentSpeed * 10, currentSpeed * 10, currentSpeed * 10)
+            end
+        end
+        
+        -- Update boost display
+        local boostDisplay = math.floor(touchFlingBoost)
+        if boostDisplay > 999999 then boostDisplay = 999999 end
+        boostLabel.Text = "BOOST: x" .. boostDisplay .. " 🔥"
+        
+        -- Color based on boost level
+        if boostDisplay > 100000 then
+            boostLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+            speedLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+            statusLabel.Text = "💀 ULTRA BOOST x" .. boostDisplay
+        elseif boostDisplay > 10000 then
+            boostLabel.TextColor3 = Color3.fromRGB(255, 100, 0)
+            speedLabel.TextColor3 = Color3.fromRGB(255, 165, 0)
+            statusLabel.Text = "🔥 MEGA BOOST x" .. boostDisplay
+        elseif boostDisplay > 1000 then
+            boostLabel.TextColor3 = Color3.fromRGB(255, 200, 0)
+            speedLabel.TextColor3 = Color3.fromRGB(255, 200, 0)
+            statusLabel.Text = "⚡ SUPER BOOST x" .. boostDisplay
+        else
+            boostLabel.TextColor3 = Color3.fromRGB(255, 200, 0)
+        end
+        
+        -- Update speed display
+        local speedDisplay = math.floor(currentSpeed)
+        if speedDisplay > 999999999 then
+            speedLabel.Text = "SPEED: ∞ 🚀"
+        else
+            speedLabel.Text = "SPEED: " .. speedDisplay .. " 🚀"
+        end
+        
+        -- Jump higher automatically
+        if hrp.Velocity.Y < 1000 then
+            hrp.AssemblyLinearVelocity = Vector3.new(currentSpeed, currentSpeed * 1000, currentSpeed)
+        end
+        
+        -- Force teleport up to avoid ground
+        if hrp.Position.Y < 10 then
+            hrp.CFrame = CFrame.new(hrp.Position.X, hrp.Position.Y + 100, hrp.Position.Z)
+        end
+    end)
+    
+    -- Extra boost loop for even more power
+    touchFlingConnection = RunService.RenderStepped:Connect(function()
+        if not touchFlingActive then return end
+        
+        local char = localPlayer.Character
+        if not char then return end
+        
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
+        
+        -- Additional boost every render frame
+        touchFlingBoost = touchFlingBoost * 1.01
+        if touchFlingBoost > touchFlingMaxBoost then
+            touchFlingBoost = touchFlingMaxBoost
+        end
+        
+        -- Extra velocity push
+        local extraSpeed = (touchFlingSpeed * touchFlingBoost) / 10
+        hrp.AssemblyLinearVelocity = hrp.AssemblyLinearVelocity + Vector3.new(extraSpeed, extraSpeed * 100, extraSpeed)
+        
+        -- Create explosion effect for visual feedback
+        if math.random(1, 100) == 1 then
+            local exp = Instance.new("Explosion")
+            exp.BlastRadius = 10
+            exp.BlastPressure = 1000
+            exp.Position = hrp.Position
+            exp.Parent = workspace
+            Debris:AddItem(exp, 0.1)
+        end
+    end)
+end
+
+local function stopTouchFling()
+    touchFlingActive = false
+    
+    if touchFlingLoop then
+        touchFlingLoop:Disconnect()
+        touchFlingLoop = nil
+    end
+    
+    if touchFlingConnection then
+        touchFlingConnection:Disconnect()
+        touchFlingConnection = nil
+    end
+    
+    buttons.touchFling.Text = "🚀 TOUCH FLING: OFF"
+    buttons.touchFling.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
+    statusLabel.Text = "✅ Touch Fling Stopped"
+    boostLabel.Text = "BOOST: x0 🔥"
+    boostLabel.TextColor3 = Color3.fromRGB(255, 200, 0)
+    speedLabel.TextColor3 = Color3.new(1, 1, 1)
+    touchFlingBoost = 1
+    
+    -- Reset velocity
+    local char = localPlayer.Character
+    if char then
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            hrp.AssemblyLinearVelocity = Vector3.new()
+            hrp.AssemblyAngularVelocity = Vector3.new()
+        end
+    end
+end
+
+-- Toggle Touch Fling
+buttons.touchFling.MouseButton1Click:Connect(function()
+    if touchFlingActive then
+        stopTouchFling()
+    else
+        startTouchFling()
+    end
+end)
+
+-- ===== OTHER BUTTON FUNCTIONS =====
+
+-- Get players
+local function getPlayers(input)
+    local players = {}
+    input = string.lower(input or "")
+    
+    if input == "all" then
+        for _, p in pairs(Players:GetPlayers()) do
+            if p ~= localPlayer then table.insert(players, p) end
+        end
+    elseif input == "nonfriends" then
+        for _, p in pairs(Players:GetPlayers()) do
+            if p ~= localPlayer then
+                local success, isFriend = pcall(function()
+                    return p:IsFriendsWith(localPlayer.UserId)
+                end)
+                if not (success and isFriend) then
+                    table.insert(players, p)
+                end
+            end
+        end
+    else
+        for _, p in pairs(Players:GetPlayers()) do
+            if p ~= localPlayer then
+                local name = string.lower(p.Name)
+                local display = string.lower(p.DisplayName or "")
+                if string.find(name, input) or string.find(display, input) then
+                    table.insert(players, p)
+                end
+            end
+        end
+    end
+    return players
+end
+
+-- Ultra Fling
+local function ultraFling(target)
+    local char = localPlayer.Character
+    if not char then return end
+    
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+    
+    local targetChar = target.Character
+    if not targetChar then return end
+    
+    local targetRoot = targetChar:FindFirstChild("HumanoidRootPart")
+    if not targetRoot then return end
+    
+    if root.Velocity.Magnitude < 50 then
+        getgenv().OldPos = root.CFrame
+    end
+    
+    workspace.FallenPartsDestroyHeight = 0/0
+    
+    local power = 9e99
+    
+    local bv = Instance.new("BodyVelocity")
+    bv.Velocity = Vector3.new(power, power * 10, power)
+    bv.MaxForce = Vector3.new(power, power, power)
+    bv.Parent = root
+    
+    local bg = Instance.new("BodyGyro")
+    bg.CFrame = CFrame.new(root.Position)
+    bg.D = power
+    bg.MaxTorque = Vector3.new(power, power, power)
+    bg.P = power
+    bg.Parent = root
+    
+    local bp = Instance.new("BodyPosition")
+    bp.Position = targetRoot.Position + Vector3.new(0, 50, 0)
+    bp.D = power
+    bp.MaxForce = Vector3.new(power, power, power)
+    bp.P = power
+    bp.Parent = root
+    
+    local start = tick()
+    while flingActive and targetChar.Parent and tick() - start < 1.5 do
+        targetRoot.AssemblyLinearVelocity = Vector3.new(power, power, power)
+        targetRoot.AssemblyAngularVelocity = Vector3.new(power, power, power)
+        root.CFrame = CFrame.new(targetRoot.Position) * CFrame.new(0, 3, 0)
+        root.AssemblyLinearVelocity = Vector3.new(power, power, power)
+        task.wait()
+    end
+    
+    pcall(function() bv:Destroy() end)
+    pcall(function() bg:Destroy() end)
+    pcall(function() bp:Destroy() end)
+    
+    if getgenv().OldPos then
+        root.CFrame = getgenv().OldPos
+    end
+end
+
+-- Mode toggle
+modeBtn.MouseButton1Click:Connect(function()
+    flingMode = flingMode % 3 + 1
+    modeBtn.Text = tostring(flingMode)
+    local modes = {"Normal", "Super", "Ultra"}
+    statusLabel.Text = "Mode: " .. modes[flingMode] .. " ⚡"
+end)
+
+-- Main fling
+mainBtn.MouseButton1Click:Connect(function()
+    flingActive = not flingActive
+    
+    if flingActive then
+        currentInput = string.lower(inputBox.Text)
+        local players = getPlayers(currentInput)
+        
+        if #players == 0 then
+            statusLabel.Text = "❌ No players!"
+            flingActive = false
+            return
+        end
+        
+        mainBtn.Text = "FLING: ON 🔥"
+        mainBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 20)
+        statusLabel.Text = "⚡ Flinging " .. #players .. " players"
+        
+        spawn(function()
+            while flingActive do
+                for _, player in pairs(players) do
+                    if not flingActive then break end
+                    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                        ultraFling(player)
+                    end
+                    task.wait(0.1)
+                end
+            end
+        end)
+    else
+        mainBtn.Text = "FLING: OFF"
+        mainBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+        statusLabel.Text = "✅ Stopped"
+    end
+end)
+
+-- Anti Fling
+buttons.antiFling.MouseButton1Click:Connect(function()
+    local enabled = not buttons.antiFling:GetAttribute("Enabled")
+    buttons.antiFling:SetAttribute("Enabled", enabled)
+    if enabled then
+        buttons.antiFling.Text = "ANTI FLING: ON 🛡️"
+        buttons.antiFling.BackgroundColor3 = Color3.fromRGB(80, 20, 20)
+        spawn(function()
+            while buttons.antiFling:GetAttribute("Enabled") do
+                for _, p in pairs(Players:GetPlayers()) do
+                    if p ~= localPlayer and p.Character then
+                        for _, part in pairs(p.Character:GetDescendants()) do
+                            if part:IsA("BasePart") then
+                                part.CanCollide = false
+                            end
+                        end
+                    end
+                end
+                task.wait(0.1)
+            end
+        end)
+    else
+        buttons.antiFling.Text = "ANTI FLING: OFF"
+        buttons.antiFling.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
+    end
+end)
+
+-- Anti Kill
+buttons.antiKill.MouseButton1Click:Connect(function()
+    local enabled = not buttons.antiKill:GetAttribute("Enabled")
+    buttons.antiKill:SetAttribute("Enabled", enabled)
+    if enabled then
+        buttons.antiKill.Text = "ANTI KILL: ON 🛡️"
+        buttons.antiKill.BackgroundColor3 = Color3.fromRGB(80, 20, 20)
+        spawn(function()
+            while buttons.antiKill:GetAttribute("Enabled") do
+                for _, part in pairs(workspace:GetDescendants()) do
+                    if part:IsA("BasePart") and part.CanTouch then
+                        part.CanTouch = false
+                    end
+                end
+                task.wait(0.1)
+            end
+        end)
+    else
+        buttons.antiKill.Text = "ANTI KILL: OFF"
+        buttons.antiKill.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
+    end
+end)
+
+-- Noclip
+buttons.noclip.MouseButton1Click:Connect(function()
+    local enabled = not buttons.noclip:GetAttribute("Enabled")
+    buttons.noclip:SetAttribute("Enabled", enabled)
+    if enabled then
+        buttons.noclip.Text = "NOCLIP: ON 🌀"
+        buttons.noclip.BackgroundColor3 = Color3.fromRGB(80, 20, 20)
+        spawn(function()
+            while buttons.noclip:GetAttribute("Enabled") do
+                local char = localPlayer.Character
+                if char then
+                    for _, part in pairs(char:GetDescendants()) do
+                        if part:IsA("BasePart") then
+                            part.CanCollide = false
+                        end
+                    end
+                end
+                task.wait()
+            end
+        end)
+    else
+        buttons.noclip.Text = "NOCLIP: OFF"
+        buttons.noclip.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
+    end
+end)
+
+-- Revenge
+buttons.revenge.MouseButton1Click:Connect(function()
+    local enabled = not buttons.revenge:GetAttribute("Enabled")
+    buttons.revenge:SetAttribute("Enabled", enabled)
+    if enabled then
+        buttons.revenge.Text = "REVENGE: ON 💀"
+        buttons.revenge.BackgroundColor3 = Color3.fromRGB(80, 20, 20)
+        spawn(function()
+            while buttons.revenge:GetAttribute("Enabled") do
+                for _, p in pairs(Players:GetPlayers()) do
+                    if p ~= localPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                        local hrp = p.Character.HumanoidRootPart
+                        if hrp.AssemblyLinearVelocity.Magnitude > 1000 then
+                            local root = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart")
+                            if root then
+                                root.CFrame = CFrame.new(hrp.Position)
+                                root.AssemblyLinearVelocity = hrp.AssemblyLinearVelocity * 2
+                            end
+                        end
+                    end
+                end
+                task.wait(0.1)
+            end
+        end)
+    else
+        buttons.revenge.Text = "REVENGE: OFF"
+        buttons.revenge.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
+    end
+end)
+
+-- Lag Switch
+buttons.lagSwitch.MouseButton1Click:Connect(function()
+    local enabled = not buttons.lagSwitch:GetAttribute("Enabled")
+    buttons.lagSwitch:SetAttribute("Enabled", enabled)
+    if enabled then
+        buttons.lagSwitch.Text = "LAG SWITCH: ON ⚡"
+        buttons.lagSwitch.BackgroundColor3 = Color3.fromRGB(80, 20, 20)
+        spawn(function()
+            while buttons.lagSwitch:GetAttribute("Enabled") do
+                for i = 1, 30 do
+                    local p = Instance.new("Part")
+                    p.Size = Vector3.new(500, 500, 500)
+                    p.Position = Vector3.new(math.random(-50000, 50000), math.random(-50000, 50000), math.random(-50000, 50000))
+                    p.Anchored = true
+                    p.Transparency = 1
+                    p.CanCollide = false
+                    p.Parent = workspace
+                    Debris:AddItem(p, 0.02)
+                end
+                task.wait(0.03)
+            end
+        end)
+    else
+        buttons.lagSwitch.Text = "LAG SWITCH: OFF"
+        buttons.lagSwitch.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
+    end
+end)
+
+-- ===== FPD PROTECTION =====
+spawn(function()
+    while true do
+        workspace.FallenPartsDestroyHeight = 0/0
+        task.wait(0.01)
+    end
+end)
+
+-- ===== ENTER KEY =====
+inputBox.FocusLost:Connect(function(enterPressed)
+    if enterPressed then
+        currentInput = string.lower(inputBox.Text)
+        if flingActive then
+            flingActive = false
+            mainBtn.Text = "FLING: OFF"
+            mainBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+            wait(0.1)
+            flingActive = true
+            mainBtn.Text = "FLING: ON 🔥"
+            mainBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 20)
+            spawn(function()
+                local players = getPlayers(currentInput)
+                if #players == 0 then
+                    statusLabel.Text = "❌ No players!"
+                    flingActive = false
+                    mainBtn.Text = "FLING: OFF"
+                    mainBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+                    return
+                end
+                statusLabel.Text = "⚡ Flinging " .. #players .. " players"
+                while flingActive do
+                    for _, player in pairs(players) do
+                        if not flingActive then break end
+                        if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                            ultraFling(player)
+                        end
+                        task.wait(0.1)
+                    end
+                end
+            end)
+        end
+    end
+end)
+
+-- ===== NOTIFICATION =====
+StarterGui:SetCore("SendNotification", {
+    Title = "Fling GUI - Auto-Boost",
+    Text = "🚀 TOUCH FLING = INFINITE BOOST!\nSpeed goes up forever!",
+    Duration = 5
+})
+
+print("⚡ Touch Fling Auto-Boost Loaded! ⚡")
+print("🚀 Speed increases exponentially!")
